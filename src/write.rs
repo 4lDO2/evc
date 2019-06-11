@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic;
 use std::sync::atomic::{AtomicPtr, Ordering};
+use std::thread;
 
 use crate::{Epoch, Epochs, Inner, OperationCache, USIZE_MSB};
 
@@ -29,10 +30,13 @@ impl<T: OperationCache> WriteHandle<T> {
         self.ops.push(operation)
     }
     fn wait(&mut self, epochs: &mut Vec<Epoch>) {
+        let mut start_index = 0;
+        let mut retry_count = 0;
+
         self.last_epochs.resize(epochs.len(), 0);
 
         'retrying: loop {
-            for (index, last_epoch) in self.last_epochs.iter().cloned().enumerate() {
+            for (index, last_epoch) in self.last_epochs.iter().cloned().enumerate().skip(start_index) {
                 // Delete the reader from the epochs if the reader has dropped.
                 if Arc::strong_count(&epochs[index]) == 1 {
                     epochs.remove(index);
@@ -40,9 +44,21 @@ impl<T: OperationCache> WriteHandle<T> {
                     continue 'retrying
                 }
 
+                if self.last_epochs[index] & USIZE_MSB != 0 {
+                    continue
+                }
+
                 let current_epoch = epochs[index].load(Ordering::Acquire);
                 
                 if current_epoch == last_epoch & current_epoch && USIZE_MSB == 0 && current_epoch != 0 {
+                    start_index = index;
+
+                    if retry_count < 32 {
+                        retry_count += 1;
+                    } else {
+                        thread::yield_now();
+                    }
+
                     continue 'retrying
                 }
             }
