@@ -32,13 +32,11 @@
 //! impl OperationCache for VecWrapper {
 //!     type Operation = Operation;
 //!
-//!     fn apply_operations<O: IntoIterator<Item = Self::Operation>>(&mut self, operations: O) {
-//!         for operation in operations {
-//!             match operation {
-//!                 Operation::Push(value) => self.0.push(value),
-//!                 Operation::Remove(index) => { self.0.remove(index); },
-//!                 Operation::Clear => self.0.clear(),
-//!             }
+//!     fn apply_operation(&mut self, operation: Self::Operation) {
+//!         match operation {
+//!             Operation::Push(value) => self.0.push(value),
+//!             Operation::Remove(index) => { self.0.remove(index); },
+//!             Operation::Clear => self.0.clear(),
 //!         }
 //!     }
 //! }
@@ -90,10 +88,8 @@ pub trait OperationCache {
     /// The operation this type uses for modifying itself.
     type Operation: Clone;
 
-    /// Apply a series of operations on this type.
-    fn apply_operations<O>(&mut self, operations: O)
-    where
-        O: IntoIterator<Item = Self::Operation>;
+    /// Apply an operation to self.
+    fn apply_operation(&mut self, operations: Self::Operation);
 }
 
 pub(crate) struct Inner<T> {

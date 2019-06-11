@@ -14,10 +14,8 @@ struct Push(u16);
 impl OperationCache for VecWrapper {
     type Operation = Push;
 
-    fn apply_operations<O: IntoIterator<Item = Self::Operation>>(&mut self, operations: O) {
-        for operation in operations {
-            self.0.push(operation.0)
-        }
+    fn apply_operation(&mut self, operation: Self::Operation) {
+        self.0.push(operation.0)
     }
 }
 

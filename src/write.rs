@@ -80,9 +80,13 @@ impl<T: OperationCache> WriteHandle<T> {
         let mut epochs = epochs.lock().unwrap();
         self.wait(&mut epochs);
 
-        unsafe {
+        let w_handle = &mut unsafe {
             self.writers_inner.load(Ordering::Relaxed).as_mut().unwrap()
-        }.value.apply_operations(self.ops.clone());
+        }.value;
+
+        for operation in self.ops.iter().cloned() {
+            w_handle.apply_operation(operation);
+        }
 
         // Swap the pointers.
         let writers_inner = self.writers_inner.swap(self.readers_inner.load(Ordering::Relaxed), Ordering::Release);
@@ -96,9 +100,13 @@ impl<T: OperationCache> WriteHandle<T> {
             }
         }
 
-        unsafe {
+        let w_handle = &mut unsafe {
             self.writers_inner.load(Ordering::Relaxed).as_mut().unwrap()
-        }.value.apply_operations(self.ops.drain(0..self.ops.len()));
+        }.value;
+
+        for operation in self.ops.drain(0..self.ops.len()) {
+            w_handle.apply_operation(operation)
+        }
     }
 }
 
