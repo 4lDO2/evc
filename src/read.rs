@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
 use crate::{Epoch, Epochs, Inner, USIZE_MSB};
 
-/// A handle used for accessing data immutable using RAII guards.
+/// A handle used for accessing data immutably using RAII guards.
 pub struct ReadHandle<T> {
     inner: Arc<AtomicPtr<Inner<T>>>,
     epochs: Epochs,

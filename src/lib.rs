@@ -11,6 +11,64 @@
 //! (`OperationCache`). Therefore making an extension trait and implementing it for
 //! `WriteHandle<YourType>` is encouraged, so that accessing the inner data can be done using
 //! regular methods (like `evmap` does internally).
+//!
+//! # Examples
+//!
+//! `VecWrapper`
+//!
+//! ```
+//! use evc::OperationCache;
+//!
+//! #[derive(Clone, Debug, Default)]
+//! struct VecWrapper(Vec<u16>);
+//!
+//! #[derive(Clone, Copy, Debug)]
+//! enum Operation {
+//!     Push(u16),
+//!     Remove(usize),
+//!     Clear,
+//! }
+//!
+//! impl OperationCache for VecWrapper {
+//!     type Operation = Operation;
+//!
+//!     fn apply_operations<O: IntoIterator<Item = Self::Operation>>(&mut self, operations: O) {
+//!         for operation in operations {
+//!             match operation {
+//!                 Operation::Push(value) => self.0.push(value),
+//!                 Operation::Remove(index) => { self.0.remove(index); },
+//!                 Operation::Clear => self.0.clear(),
+//!             }
+//!         }
+//!     }
+//! }
+//!
+//! let (mut w_handle, r_handle) = evc::new(VecWrapper::default());
+//!
+//! w_handle.write(Operation::Push(42));
+//! w_handle.write(Operation::Push(24));
+//!
+//! assert_eq!(r_handle.read().0, &[]);
+//!
+//! w_handle.refresh();
+//!
+//! assert_eq!(r_handle.read().0, &[42, 24]);
+//!
+//! w_handle.write(Operation::Push(55));
+//! w_handle.write(Operation::Remove(0));
+//! w_handle.refresh();
+//!
+//! assert_eq!(r_handle.read().0, &[24, 55]);
+//!
+//! w_handle.write(Operation::Clear);
+//!
+//! assert_eq!(r_handle.read().0, &[24, 55]);
+//!
+//! w_handle.refresh();
+//! 
+//! assert_eq!(r_handle.read().0, &[]);
+//!
+//! ```
 
 use std::mem;
 use std::sync::{Arc, Mutex, Weak};
