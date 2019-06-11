@@ -1,5 +1,5 @@
 use std::mem;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 use std::sync::atomic::{AtomicPtr, AtomicUsize};
 
 mod read;
@@ -9,7 +9,8 @@ mod write;
 pub use write::WriteHandle;
 
 pub(crate) type Epoch = Arc<AtomicUsize>;
-pub(crate) type Epochs = Arc<Mutex<Vec<Epoch>>>;
+pub(crate) type WeakEpoch = Weak<AtomicUsize>;
+pub(crate) type Epochs = Arc<Mutex<Vec<WeakEpoch>>>;
 
 pub trait OperationCache {
     type Operation: Clone;

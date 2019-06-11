@@ -4,7 +4,7 @@ use std::sync::atomic;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::thread;
 
-use crate::{Epoch, Epochs, Inner, OperationCache, USIZE_MSB};
+use crate::{WeakEpoch, Epochs, Inner, OperationCache, USIZE_MSB};
 
 pub struct WriteHandle<T: OperationCache> {
     writers_inner: Arc<AtomicPtr<Inner<T>>>,
@@ -30,28 +30,34 @@ impl<T: OperationCache> WriteHandle<T> {
     pub fn write(&mut self, operation: T::Operation) {
         self.ops.push(operation)
     }
-    fn wait(&mut self, epochs: &mut Vec<Epoch>) {
+    fn wait(&mut self, epochs: &mut Vec<WeakEpoch>) {
         let mut start_index = 0;
         let mut retry_count = 0;
 
         self.last_epochs.resize(epochs.len(), 0);
 
         'retrying: loop {
-            for (index, last_epoch) in self.last_epochs.iter().cloned().enumerate().skip(start_index) {
+            for index in start_index..self.last_epochs.len() {
                 // Delete the reader from the epochs if the reader has dropped.
-                if Arc::strong_count(&epochs[index]) == 1 {
-                    epochs.remove(index);
-                    self.last_epochs.remove(index);
-                    continue 'retrying
-                }
+                let epoch = match epochs[index].upgrade() {
+                    Some(e) => e,
+                    None => {
+                        epochs.remove(index);
+                        self.last_epochs.remove(index);
+
+                        // TODO: Maybe this "garbage collecting could happen in another loop?
+                        start_index = 0;
+                        continue 'retrying
+                    }
+                };
 
                 if self.last_epochs[index] & USIZE_MSB != 0 {
                     continue
                 }
 
-                let current_epoch = epochs[index].load(Ordering::Acquire);
+                let current_epoch = epoch.load(Ordering::Acquire);
                 
-                if current_epoch == last_epoch & current_epoch && USIZE_MSB == 0 && current_epoch != 0 {
+                if current_epoch == self.last_epochs[index] & current_epoch && USIZE_MSB == 0 && current_epoch != 0 {
                     start_index = index;
 
                     if retry_count < 32 {
@@ -82,7 +88,9 @@ impl<T: OperationCache> WriteHandle<T> {
         atomic::fence(Ordering::SeqCst);
 
         for (i, epoch) in epochs.iter().enumerate() {
-            self.last_epochs[i] = epoch.load(Ordering::Acquire);
+            if let Some(e) = epoch.upgrade() {
+                self.last_epochs[i] = e.load(Ordering::Acquire);
+            }
         }
 
         unsafe {

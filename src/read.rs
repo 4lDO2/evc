@@ -20,7 +20,7 @@ pub struct ReadHandle<T> {
 impl<T> ReadHandle<T> {
     pub(crate) fn new(inner: Arc<AtomicPtr<Inner<T>>>, epochs: Epochs) -> Self {
         let global_epoch = Arc::new(AtomicUsize::new(0));
-        epochs.lock().unwrap().push(Arc::clone(&global_epoch));
+        epochs.lock().unwrap().push(Arc::downgrade(&global_epoch));
 
         Self {
             inner,
