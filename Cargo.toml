@@ -3,5 +3,15 @@ name = "evc"
 version = "0.1.0"
 authors = ["4lDO2 <4lDO2@protonmail.com>"]
 edition = "2018"
+description = "Eventually consistent lock-free synchronization primitive"
+readme = "README.md"
+documentation = "https://docs.rs/evc"
+repository = "https://github.com/4lDO2/evc"
+license = "MIT/Apache-2.0"
 
-[dependencies]
+keywords = ["lock-free", "synchronization-primitive", "eventually-consistent"]
+categories = ["concurrency"]
+
+[badges]
+travis-ci = { repository = "4lDO2/evc" }
+maintenance = { status = "passively-maintained" }
