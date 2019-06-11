@@ -65,6 +65,11 @@ impl<T> Drop for ReadHandle<T> {
         }
     }
 }
+impl<T> Clone for ReadHandle<T> {
+    fn clone(&self) -> Self{
+        ReadHandle::new(Arc::clone(&self.inner), Arc::clone(&self.epochs))
+    }
+}
 
 /// A factory for read handles, allows retrieving new `ReadHandle`s while still being `Sync`.
 pub struct ReadHandleFactory<T> {

@@ -47,3 +47,5 @@ fn read_after_drop() {
 
     assert_eq!(r_handle.read().0, &[1337]);
 }
+
+// TODO: Write more tests.
