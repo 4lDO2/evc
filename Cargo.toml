@@ -9,7 +9,7 @@ documentation = "https://docs.rs/evc"
 repository = "https://github.com/4lDO2/evc"
 license = "MIT/Apache-2.0"
 
-keywords = ["lock-free", "synchronization-primitive", "eventually-consistent"]
+keywords = ["lock-free", "eventually-consistent"]
 categories = ["concurrency"]
 
 [badges]
