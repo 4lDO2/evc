@@ -1,4 +1,7 @@
 # `evc`
+[![Crates.io](http://meritbadge.herokuapp.com/evc)](https://crates.io/crates/evc)
+[![Docs.rs](https://docs.rs/evc/badge.svg)](https://docs.rs/evc)
+![Build Status](https://travis-ci.org/4lDO2/evc.svg?branch=master "Build Status")
 
 A lock-free, eventually consistent synchronization primitive.
 
