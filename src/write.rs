@@ -1,3 +1,4 @@
+use std::mem;
 use std::sync::Arc;
 use std::sync::atomic;
 use std::sync::atomic::{AtomicPtr, Ordering};
@@ -87,5 +88,20 @@ impl<T: OperationCache> WriteHandle<T> {
         unsafe {
             self.writers_inner.load(Ordering::Relaxed).as_mut().unwrap()
         }.value.apply_operations(self.ops.drain(0..self.ops.len()));
+    }
+}
+
+impl<T: OperationCache> Drop for WriteHandle<T> {
+    fn drop(&mut self) {
+        if !self.ops.is_empty() {
+            self.refresh();
+        }
+        assert!(self.ops.is_empty());
+
+        let writers_inner = self.writers_inner.load(Ordering::Relaxed);
+        mem::drop(unsafe { Box::from_raw(writers_inner) });
+
+        // The readers should be able to continue reading after this writer has gone, and thus they
+        // should be responsible for destroying their handle.
     }
 }

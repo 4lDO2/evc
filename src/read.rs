@@ -1,5 +1,6 @@
 use std::cell::Cell;
 use std::marker::PhantomData;
+use std::mem;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::atomic;
@@ -50,6 +51,14 @@ impl<T> ReadHandle<T> {
         ReadHandleFactory {
             inner: Arc::clone(&self.inner),
             epochs: Arc::clone(&self.epochs),
+        }
+    }
+}
+impl<T> Drop for ReadHandle<T> {
+    fn drop(&mut self) {
+        if Arc::strong_count(&self.inner) == 1 {
+            let readers_inner = self.inner.load(Ordering::Relaxed);
+            mem::drop(unsafe { Box::from_raw(readers_inner) });
         }
     }
 }
