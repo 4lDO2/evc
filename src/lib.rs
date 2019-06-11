@@ -1,3 +1,13 @@
+#![deny(missing_docs)]
+
+//! A lock-free, eventually consistent synchronization primitive.
+//!
+//! This primitive makes reading and writing possible at the same time, although refreshing is
+//! needed to make writes visible to the readers.
+//!
+//! This crate is very similar to [evmap](https://docs.rs/evmap), but generalized to any type
+//! (evmap is a wrapper around HashMap-only).
+
 use std::mem;
 use std::sync::{Arc, Mutex, Weak};
 use std::sync::atomic::{AtomicPtr, AtomicUsize};
@@ -12,9 +22,13 @@ pub(crate) type Epoch = Arc<AtomicUsize>;
 pub(crate) type WeakEpoch = Weak<AtomicUsize>;
 pub(crate) type Epochs = Arc<Mutex<Vec<WeakEpoch>>>;
 
+/// Represents anything that can be mutated using operations. This trait has to be implemented in
+/// order to store it in an evc.
 pub trait OperationCache {
+    /// The operation this type uses for modifying itself.
     type Operation: Clone;
 
+    /// Apply a series of operations on this type.
     fn apply_operations<O>(&mut self, operations: O)
     where
         O: IntoIterator<Item = Self::Operation>;
@@ -26,6 +40,7 @@ pub(crate) struct Inner<T> {
 
 pub(crate) const USIZE_MSB: usize = 1 << (mem::size_of::<usize>() * 8 - 1);
 
+/// Create a write handle and a read handle to some data. The data will be `Clone`d.
 pub fn new<T: Clone + OperationCache>(value: T) -> (WriteHandle<T>, ReadHandle<T>)
 {
     let readers_inner = Arc::new(AtomicPtr::new(Box::into_raw(Box::new(Inner { value: value.clone() }))));
@@ -37,17 +52,4 @@ pub fn new<T: Clone + OperationCache>(value: T) -> (WriteHandle<T>, ReadHandle<T
     let write_handle = WriteHandle::new(writers_inner, readers_inner, epochs);
 
     (write_handle, read_handle)
-}
-
-#[derive(Debug, Clone)]
-struct S(Vec<u16>);
-
-impl OperationCache for S {
-    type Operation = u16;
-
-    fn apply_operations<O>(&mut self, operations: O) where O: IntoIterator<Item = Self::Operation> {
-        for operation in operations {
-            self.0.push(operation);
-        }
-    }
 }

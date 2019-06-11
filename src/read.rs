@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
 use crate::{Epoch, Epochs, Inner, USIZE_MSB};
 
+/// A handle used for accessing data immutable using RAII guards.
 pub struct ReadHandle<T> {
     inner: Arc<AtomicPtr<Inner<T>>>,
     epochs: Epochs,
@@ -33,6 +34,7 @@ impl<T> ReadHandle<T> {
         }
     }
 
+    /// Create a RAII guard that allows reading the inner value directly.
     pub fn read(&'_ self) -> ReadHandleGuard<'_, T> {
         let epoch = self.local_epoch.fetch_add(1, Ordering::Relaxed) + 1;
         self.global_epoch.store(epoch, Ordering::Release);
@@ -47,6 +49,7 @@ impl<T> ReadHandle<T> {
             epoch,
         }
     }
+    /// Crete a factory, used to make more read handles.
     pub fn factory(&self) -> ReadHandleFactory<T> {
         ReadHandleFactory {
             inner: Arc::clone(&self.inner),
@@ -63,18 +66,20 @@ impl<T> Drop for ReadHandle<T> {
     }
 }
 
+/// A factory for read handles, allows retrieving new `ReadHandle`s while still being `Sync`.
 pub struct ReadHandleFactory<T> {
     inner: Arc<AtomicPtr<Inner<T>>>,
     epochs: Epochs,
 }
 
 impl<T> ReadHandleFactory<T> {
+    /// Create a new handle.
     pub fn handle(&self) -> ReadHandle<T> {
         ReadHandle::new(Arc::clone(&self.inner), Arc::clone(&self.epochs))
     }
 }
 
-
+/// A RAII guard used to directly access the data of a read handle, immutably.
 pub struct ReadHandleGuard<'a, T> {
     handle: &'a ReadHandle<T>,
     epoch: usize,

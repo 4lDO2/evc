@@ -6,6 +6,7 @@ use std::thread;
 
 use crate::{WeakEpoch, Epochs, Inner, OperationCache, USIZE_MSB};
 
+/// A handle which allows accessing the inner data mutably through operations.
 pub struct WriteHandle<T: OperationCache> {
     writers_inner: Arc<AtomicPtr<Inner<T>>>,
     readers_inner: Arc<AtomicPtr<Inner<T>>>,
@@ -27,6 +28,7 @@ impl<T: OperationCache> WriteHandle<T> {
             ops: Vec::new(),
         }
     }
+    /// Mutate the inner data using an operation.
     pub fn write(&mut self, operation: T::Operation) {
         self.ops.push(operation)
     }
@@ -72,6 +74,7 @@ impl<T: OperationCache> WriteHandle<T> {
             break
         }
     }
+    /// Refresh the queued writes, making the changes visible to readers.
     pub fn refresh(&mut self) {
         let epochs = Arc::clone(&self.epochs);
         let mut epochs = epochs.lock().unwrap();
