@@ -51,18 +51,3 @@ impl OperationCache for S {
         }
     }
 }
-
-#[test]
-fn test() {
-    let vector = S(vec! [1337, 42, 1445, 5494]);
-    let (mut w_handle, r_handle) = new(vector);
-    w_handle.write(24);
-    w_handle.refresh();
-
-    println!("{:?}", r_handle.read().0);
-
-    w_handle.write(38);
-    w_handle.write(69);
-    w_handle.refresh();
-    println!("{:?}", r_handle.read().0);
-}
