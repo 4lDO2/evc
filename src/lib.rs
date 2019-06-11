@@ -5,12 +5,11 @@
 //! This primitive makes reading and writing possible at the same time, although refreshing is
 //! needed to make writes visible to the readers.
 //!
-//! This crate is very similar to [`evmap`](https://docs.rs/evmap), but generalized to any type
-//! (evmap is a wrapper around HashMap). Unlike `evmap`, which wraps a HashMap, `evc` is lower
-//! level, meaning that you need to be able to cache all possible mutations on the inner type
-//! (`OperationCache`). Therefore making an extension trait and implementing it for
-//! `WriteHandle<YourType>` is encouraged, so that accessing the inner data can be done using
-//! regular methods (like `evmap` does internally).
+//! This crate is very similar to [`evmap`](https://docs.rs/evmap), but generalized to any type.
+//! Unlike `evmap`, which wraps a HashMap, `evc` is lower level, meaning that you need to be
+//! able to cache all possible mutations on the inner type (`OperationCache`). Therefore making
+//! an extension trait and implementing it for `WriteHandle<YourType>` is encouraged, so that
+//! accessing the inner data can be done using regular methods (like `evmap` does internally).
 //!
 //! # Examples
 //!
