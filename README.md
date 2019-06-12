@@ -3,7 +3,7 @@
 [![Docs.rs](https://docs.rs/evc/badge.svg)](https://docs.rs/evc)
 ![Build Status](https://travis-ci.org/4lDO2/evc.svg?branch=master "Build Status")
 
-A lock-free, eventually consistent synchronization primitive.
+A lock-free (when reading), eventually consistent synchronization primitive.
 
 This primitive makes reading and writing possible at the same time, although refreshing is
 needed to make writes visible to the readers.

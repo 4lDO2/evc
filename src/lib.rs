@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-//! A lock-free, eventually consistent synchronization primitive.
+//! A lock-free (when reading), eventually consistent synchronization primitive.
 //!
 //! This primitive makes reading and writing possible at the same time, although refreshing is
 //! needed to make writes visible to the readers.
