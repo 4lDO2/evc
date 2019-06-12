@@ -59,7 +59,7 @@ impl<T: OperationCache> WriteHandle<T> {
 
                 let current_epoch = epoch.load(Ordering::Acquire);
                 
-                if current_epoch == self.last_epochs[index] & current_epoch && USIZE_MSB == 0 && current_epoch != 0 {
+                if current_epoch == self.last_epochs[index] && current_epoch & USIZE_MSB == 0 && current_epoch != 0 {
                     start_index = index;
 
                     if retry_count < 32 {
