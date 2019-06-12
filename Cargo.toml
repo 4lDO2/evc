@@ -1,6 +1,6 @@
 [package]
 name = "evc"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["4lDO2 <4lDO2@protonmail.com>"]
 edition = "2018"
 description = "Eventually consistent synchronization primitive"
