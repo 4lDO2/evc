@@ -62,14 +62,14 @@
 //! assert_eq!(r_handle.read().0, &[24, 55]);
 //!
 //! w_handle.refresh();
-//! 
+//!
 //! assert_eq!(r_handle.read().0, &[]);
 //!
 //! ```
 
 use std::mem;
-use std::sync::{Arc, Mutex, Weak};
 use std::sync::atomic::{AtomicPtr, AtomicUsize};
+use std::sync::{Arc, Mutex, Weak};
 
 mod read;
 pub use read::{ReadHandle, ReadHandleFactory, ReadHandleGuard};
@@ -100,9 +100,10 @@ pub(crate) const USIZE_MSB: usize = 1 << (mem::size_of::<usize>() * 8 - 1);
 /// Create a write handle and a read handle to some data. The data must be both `OperationCache`,
 /// to support queuing data (so that both buffers can be modified during refreshes), and `Clone`,
 /// to make double buffering possible.
-pub fn new<T: Clone + OperationCache>(value: T) -> (WriteHandle<T>, ReadHandle<T>)
-{
-    let readers_inner = Arc::new(AtomicPtr::new(Box::into_raw(Box::new(Inner { value: value.clone() }))));
+pub fn new<T: Clone + OperationCache>(value: T) -> (WriteHandle<T>, ReadHandle<T>) {
+    let readers_inner = Arc::new(AtomicPtr::new(Box::into_raw(Box::new(Inner {
+        value: value.clone(),
+    }))));
     let writers_inner = Arc::new(AtomicPtr::new(Box::into_raw(Box::new(Inner { value }))));
 
     let epochs = Arc::new(Mutex::new(Vec::new()));

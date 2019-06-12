@@ -3,9 +3,9 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
 use std::ptr;
-use std::sync::Arc;
 use std::sync::atomic;
 use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use crate::{Epoch, Epochs, Inner, USIZE_MSB};
 
@@ -98,8 +98,11 @@ impl<T> Drop for ReadHandle<T> {
     }
 }
 impl<T> Clone for ReadHandle<T> {
-    fn clone(&self) -> Self{
-        ReadHandle::new(Arc::clone(self.inner.as_ref().unwrap()), Arc::clone(self.epochs.as_ref().unwrap()))
+    fn clone(&self) -> Self {
+        ReadHandle::new(
+            Arc::clone(self.inner.as_ref().unwrap()),
+            Arc::clone(self.epochs.as_ref().unwrap()),
+        )
     }
 }
 
@@ -135,6 +138,8 @@ impl<T> Deref for ReadHandleGuard<'_, T> {
 }
 impl<T> Drop for ReadHandleGuard<'_, T> {
     fn drop(&mut self) {
-        self.handle.global_epoch.store(self.epoch | USIZE_MSB, Ordering::Release);
+        self.handle
+            .global_epoch
+            .store(self.epoch | USIZE_MSB, Ordering::Release);
     }
 }

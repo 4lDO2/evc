@@ -1,11 +1,11 @@
 use std::mem;
 use std::ptr;
-use std::sync::Arc;
 use std::sync::atomic;
 use std::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::Arc;
 use std::thread;
 
-use crate::{WeakEpoch, Epochs, Inner, OperationCache, USIZE_MSB};
+use crate::{Epochs, Inner, OperationCache, WeakEpoch, USIZE_MSB};
 
 /// A handle which allows accessing the inner data mutably through operations.
 pub struct WriteHandle<T: OperationCache> {
@@ -19,7 +19,11 @@ pub struct WriteHandle<T: OperationCache> {
 }
 
 impl<T: OperationCache> WriteHandle<T> {
-    pub(crate) fn new(writers_inner: Arc<AtomicPtr<Inner<T>>>, readers_inner: Arc<AtomicPtr<Inner<T>>>, epochs: Epochs) -> Self {
+    pub(crate) fn new(
+        writers_inner: Arc<AtomicPtr<Inner<T>>>,
+        readers_inner: Arc<AtomicPtr<Inner<T>>>,
+        epochs: Epochs,
+    ) -> Self {
         Self {
             writers_inner: Some(writers_inner),
             readers_inner,
@@ -50,17 +54,20 @@ impl<T: OperationCache> WriteHandle<T> {
 
                         // TODO: Maybe this "garbage collecting could happen in another loop?
                         start_index = 0;
-                        continue 'retrying
+                        continue 'retrying;
                     }
                 };
 
                 if self.last_epochs[index] & USIZE_MSB != 0 {
-                    continue
+                    continue;
                 }
 
                 let current_epoch = epoch.load(Ordering::Acquire);
-                
-                if current_epoch == self.last_epochs[index] && current_epoch & USIZE_MSB == 0 && current_epoch != 0 {
+
+                if current_epoch == self.last_epochs[index]
+                    && current_epoch & USIZE_MSB == 0
+                    && current_epoch != 0
+                {
                     start_index = index;
 
                     if retry_count < 32 {
@@ -69,10 +76,10 @@ impl<T: OperationCache> WriteHandle<T> {
                         thread::yield_now();
                     }
 
-                    continue 'retrying
+                    continue 'retrying;
                 }
             }
-            break
+            break;
         }
     }
     /// Refresh the queued writes, making the changes visible to readers.
@@ -82,15 +89,24 @@ impl<T: OperationCache> WriteHandle<T> {
         self.wait(&mut epochs);
 
         let w_handle = &mut unsafe {
-            self.writers_inner.as_ref().unwrap().load(Ordering::Relaxed).as_mut().unwrap()
-        }.value;
+            self.writers_inner
+                .as_ref()
+                .unwrap()
+                .load(Ordering::Relaxed)
+                .as_mut()
+                .unwrap()
+        }
+        .value;
 
         for operation in self.ops.iter().cloned() {
             w_handle.apply_operation(operation);
         }
 
         // Swap the pointers.
-        let writers_inner = self.writers_inner.as_ref().unwrap().swap(self.readers_inner.load(Ordering::Relaxed), Ordering::Release);
+        let writers_inner = self.writers_inner.as_ref().unwrap().swap(
+            self.readers_inner.load(Ordering::Relaxed),
+            Ordering::Release,
+        );
         self.readers_inner.store(writers_inner, Ordering::Release);
 
         atomic::fence(Ordering::SeqCst);
@@ -102,8 +118,14 @@ impl<T: OperationCache> WriteHandle<T> {
         }
 
         let w_handle = &mut unsafe {
-            self.writers_inner.as_ref().unwrap().load(Ordering::Relaxed).as_mut().unwrap()
-        }.value;
+            self.writers_inner
+                .as_ref()
+                .unwrap()
+                .load(Ordering::Relaxed)
+                .as_mut()
+                .unwrap()
+        }
+        .value;
 
         for operation in self.ops.drain(0..self.ops.len()) {
             w_handle.apply_operation(operation)
@@ -124,7 +146,11 @@ impl<T: OperationCache> Drop for WriteHandle<T> {
             }
             assert!(self.ops.is_empty());
 
-            let writers_inner = self.writers_inner.as_ref().unwrap().swap(ptr::null_mut(), Ordering::Relaxed);
+            let writers_inner = self
+                .writers_inner
+                .as_ref()
+                .unwrap()
+                .swap(ptr::null_mut(), Ordering::Relaxed);
             mem::drop(unsafe { Box::from_raw(writers_inner) });
         }
 

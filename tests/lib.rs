@@ -62,8 +62,8 @@ fn multithreaded() {
                     match r_handle.read().0.get(index as usize) {
                         Some(&num) => {
                             assert_eq!(num, index);
-                            break 'retrying
-                        },
+                            break 'retrying;
+                        }
                         None => thread::yield_now(),
                     }
                 }
@@ -91,7 +91,7 @@ fn write_after_drop() {
     assert_eq!(r_handle.read().0, &[0]);
 
     mem::drop(r_handle);
-    
+
     w_handle.write(Push(1));
     w_handle.refresh();
 }
@@ -112,10 +112,9 @@ fn into_factory() {
 #[test]
 fn into_inner() {
     let (mut w_handle, r_handle) = evc::new(VecWrapper::default());
-    
+
     w_handle.write(Push(22));
     w_handle.refresh();
-
 
     w_handle.write(Push(33));
     w_handle.refresh();
