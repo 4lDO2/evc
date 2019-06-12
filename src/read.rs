@@ -67,16 +67,24 @@ impl<T> ReadHandle<T> {
     }
     /// Try to move out the inner value if no other readers exist.
     pub fn into_inner(mut self) -> Option<T> {
-        if let Some(inner) = self.inner.take() {
-            if Arc::strong_count(&inner) == 1 {
-                let readers_inner = inner.swap(ptr::null_mut(), Ordering::Relaxed);
-                Some(unsafe { Box::from_raw(readers_inner) }.value)
-            } else {
-                None
-            }
+        let inner = self.inner.take().unwrap();
+
+        if Arc::strong_count(&inner) == 1 {
+            let readers_inner = inner.swap(ptr::null_mut(), Ordering::Relaxed);
+            Some(unsafe { Box::from_raw(readers_inner) }.value)
         } else {
             None
         }
+    }
+}
+impl<T> From<ReadHandleFactory<T>> for ReadHandle<T> {
+    fn from(factory: ReadHandleFactory<T>) -> Self {
+        factory.into_handle()
+    }
+}
+impl<T> From<ReadHandle<T>> for ReadHandleFactory<T> {
+    fn from(handle: ReadHandle<T>) -> Self {
+        handle.into_factory()
     }
 }
 impl<T> Drop for ReadHandle<T> {
