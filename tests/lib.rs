@@ -95,3 +95,33 @@ fn write_after_drop() {
     w_handle.write(Push(1));
     w_handle.refresh();
 }
+
+#[test]
+fn into_factory() {
+    let (mut w_handle, r_handle) = evc::new(VecWrapper::default());
+    let r_factory = r_handle.into_factory();
+
+    w_handle.write(Push(100));
+    w_handle.refresh();
+
+    let r_handle = r_factory.handle();
+
+    assert_eq!(r_handle.read().0, &[100]);
+}
+
+#[test]
+fn into_inner() {
+    let (mut w_handle, r_handle) = evc::new(VecWrapper::default());
+    
+    w_handle.write(Push(22));
+    w_handle.refresh();
+
+
+    w_handle.write(Push(33));
+    w_handle.refresh();
+
+    let w_inner = w_handle.into_inner();
+    let r_inner = r_handle.into_inner().unwrap();
+
+    assert_eq!(&r_inner.0, &w_inner.0);
+}

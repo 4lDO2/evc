@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
+use std::ptr;
 use std::sync::Arc;
 use std::sync::atomic;
 use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
@@ -10,8 +11,8 @@ use crate::{Epoch, Epochs, Inner, USIZE_MSB};
 
 /// A handle used for accessing data immutably using RAII guards.
 pub struct ReadHandle<T> {
-    inner: Arc<AtomicPtr<Inner<T>>>,
-    epochs: Epochs,
+    inner: Option<Arc<AtomicPtr<Inner<T>>>>,
+    epochs: Option<Epochs>,
 
     global_epoch: Epoch,
     local_epoch: AtomicUsize,
@@ -24,8 +25,8 @@ impl<T> ReadHandle<T> {
         epochs.lock().unwrap().push(Arc::downgrade(&global_epoch));
 
         Self {
-            inner,
-            epochs,
+            inner: Some(inner),
+            epochs: Some(epochs),
 
             global_epoch,
             local_epoch: AtomicUsize::new(0),
@@ -41,7 +42,7 @@ impl<T> ReadHandle<T> {
 
         atomic::fence(Ordering::SeqCst);
 
-        let pointer = self.inner.load(Ordering::Acquire);
+        let pointer = self.inner.as_ref().unwrap().load(Ordering::Acquire);
 
         ReadHandleGuard {
             handle: self,
@@ -49,25 +50,48 @@ impl<T> ReadHandle<T> {
             epoch,
         }
     }
-    /// Crete a factory, used to make more read handles.
+    /// Create a factory, used to make more read handles.
     pub fn factory(&self) -> ReadHandleFactory<T> {
         ReadHandleFactory {
-            inner: Arc::clone(&self.inner),
-            epochs: Arc::clone(&self.epochs),
+            inner: Arc::clone(self.inner.as_ref().unwrap()),
+            epochs: Arc::clone(self.epochs.as_ref().unwrap()),
+        }
+    }
+
+    /// Consume this `ReadHandle` to create a factory
+    pub fn into_factory(mut self) -> ReadHandleFactory<T> {
+        ReadHandleFactory {
+            inner: self.inner.take().unwrap(),
+            epochs: self.epochs.take().unwrap(),
+        }
+    }
+    /// Try to move out the inner value if no other readers exist.
+    pub fn into_inner(mut self) -> Option<T> {
+        if let Some(inner) = self.inner.take() {
+            if Arc::strong_count(&inner) == 1 {
+                let readers_inner = inner.swap(ptr::null_mut(), Ordering::Relaxed);
+                Some(unsafe { Box::from_raw(readers_inner) }.value)
+            } else {
+                None
+            }
+        } else {
+            None
         }
     }
 }
 impl<T> Drop for ReadHandle<T> {
     fn drop(&mut self) {
-        if Arc::strong_count(&self.inner) == 1 {
-            let readers_inner = self.inner.load(Ordering::Relaxed);
-            mem::drop(unsafe { Box::from_raw(readers_inner) });
+        if let Some(inner) = self.inner.take() {
+            if Arc::strong_count(&inner) == 1 {
+                let readers_inner = inner.swap(ptr::null_mut(), Ordering::Relaxed);
+                mem::drop(unsafe { Box::from_raw(readers_inner) });
+            }
         }
     }
 }
 impl<T> Clone for ReadHandle<T> {
     fn clone(&self) -> Self{
-        ReadHandle::new(Arc::clone(&self.inner), Arc::clone(&self.epochs))
+        ReadHandle::new(Arc::clone(self.inner.as_ref().unwrap()), Arc::clone(self.epochs.as_ref().unwrap()))
     }
 }
 
@@ -81,6 +105,11 @@ impl<T> ReadHandleFactory<T> {
     /// Create a new handle.
     pub fn handle(&self) -> ReadHandle<T> {
         ReadHandle::new(Arc::clone(&self.inner), Arc::clone(&self.epochs))
+    }
+
+    /// Consume this factory, returning a handle.
+    pub fn into_handle(self) -> ReadHandle<T> {
+        ReadHandle::new(self.inner, self.epochs)
     }
 }
 
