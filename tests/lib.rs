@@ -1,6 +1,7 @@
 extern crate evc;
 
 use std::mem;
+use std::thread;
 
 use evc::OperationCache;
 
@@ -46,4 +47,51 @@ fn read_after_drop() {
     assert_eq!(r_handle.read().0, &[1337]);
 }
 
-// TODO: Write more tests.
+#[test]
+fn multithreaded() {
+    let mut threads = Vec::with_capacity(10);
+    let n = 0xBEEF;
+
+    let (mut w_handle, r_handle) = evc::new(VecWrapper::default());
+
+    for _ in 0..10 {
+        let r_handle = r_handle.clone();
+        threads.push(thread::spawn(move || {
+            for index in 0..n {
+                'retrying: loop {
+                    match r_handle.read().0.get(index as usize) {
+                        Some(&num) => {
+                            assert_eq!(num, index);
+                            break 'retrying
+                        },
+                        None => thread::yield_now(),
+                    }
+                }
+            }
+        }));
+    }
+
+    for index in 0..n {
+        w_handle.write(Push(index));
+        w_handle.refresh();
+    }
+
+    for thread in threads {
+        thread.join().unwrap();
+    }
+}
+
+#[test]
+fn write_after_drop() {
+    let (mut w_handle, r_handle) = evc::new(VecWrapper::default());
+
+    w_handle.write(Push(0));
+    w_handle.refresh();
+
+    assert_eq!(r_handle.read().0, &[0]);
+
+    mem::drop(r_handle);
+    
+    w_handle.write(Push(1));
+    w_handle.refresh();
+}
